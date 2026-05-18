@@ -2,3 +2,8 @@ job_description,clean_job,required_skills
 "We are looking for a Python developer with SQL, Git and machine learning knowledge.",we are looking for a python developer with sql git and machine learning knowledge.,"['python', 'sql', 'machine learning', 'git']"
 "Data analyst role requiring Excel, Power BI, SQL and communication skills.",data analyst role requiring excel power bi sql and communication skills.,"['sql', 'excel', 'power bi', 'communication']"
 "Frontend developer with HTML, CSS, JavaScript, React and Git experience.",frontend developer with html css javascript react and git experience.,"['java', 'html', 'css', 'javascript', 'react', 'git']"
+"Backend developer with Java, Spring, SQL and Docker experience.",backend developer with java spring sql and docker experience.,"['java', 'sql', 'docker']"
+"Machine learning engineer with Python, TensorFlow, deep learning and NLP skills.",machine learning engineer with python tensorflow deep learning and nlp skills.,"['python', 'machine learning', 'deep learning', 'nlp', 'tensorflow']"
+"DevOps engineer with Docker, Kubernetes, Linux and CI/CD experience.",devops engineer with docker kubernetes linux and ci cd experience.,"['docker', 'linux']"
+"Software engineer with C++, algorithms, data structures and problem solving skills.",software engineer with c++ algorithms data structures and problem solving skills.,['c++']
+"Business analyst with Excel, communication, SQL and reporting experience",business analyst with excel communication sql and reporting experience,"['sql', 'excel', 'communication']"
