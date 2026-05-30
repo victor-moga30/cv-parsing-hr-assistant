@@ -2,7 +2,7 @@ import os
 import re
 import pandas as pd
 from datasets import load_dataset
-from skill_extraction import extract_skills
+from src.skill_extraction import extract_skills
 
 MAX_RESUMES = 10000
 

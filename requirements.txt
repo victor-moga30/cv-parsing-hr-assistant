@@ -10,3 +10,6 @@ seaborn
 joblib
 scipy
 datasets
+pypdf
+pytesseract
+pillow

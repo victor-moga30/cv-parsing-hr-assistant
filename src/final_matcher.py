@@ -1,6 +1,6 @@
-from baseline import baseline_hybrid_score
-from skill_extraction import matched_skills, missing_skills
-from semantic_matcher import SemanticMatcher
+from src.baseline import baseline_hybrid_score
+from src.skill_extraction import matched_skills, missing_skills
+from src.semantic_matcher import SemanticMatcher
 
 
 class FinalMatcher:
