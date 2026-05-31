@@ -7,22 +7,30 @@ class FinalMatcher:
     def __init__(self, model_name="sentence-transformers/all-MiniLM-L6-v2"):
         self.semantic_matcher = SemanticMatcher(model_name)
 
+        # Cele mai bune ponderi din reports/optimization_results.csv:
+        # semantic_weight=0.4, baseline_weight=0.1, skill_weight=0.5
+        self.semantic_weight = 0.40
+        self.baseline_weight = 0.10
+        self.skill_weight = 0.50
+
     def match(self, cv_text, job_text, cv_skills, job_skills):
         baseline = baseline_hybrid_score(cv_text, job_text, cv_skills, job_skills)
         semantic_score = self.semantic_matcher.similarity_score(cv_text, job_text)
 
         final_score = (
-            0.55 * semantic_score
-            + 0.25 * baseline["baseline_score"]
-            + 0.20 * baseline["skill_score"]
+            self.semantic_weight * semantic_score
+            + self.baseline_weight * baseline["baseline_score"]
+            + self.skill_weight * baseline["skill_score"]
         )
+
+        final_score = max(0.0, min(100.0, final_score))
 
         return {
             "final_score": round(final_score, 2),
-            "semantic_score": semantic_score,
-            "baseline_score": baseline["baseline_score"],
-            "skill_score": baseline["skill_score"],
-            "tfidf_score": baseline["tfidf_score"],
+            "semantic_score": round(semantic_score, 2),
+            "baseline_score": round(baseline["baseline_score"], 2),
+            "skill_score": round(baseline["skill_score"], 2),
+            "tfidf_score": round(baseline["tfidf_score"], 2),
             "matched_skills": matched_skills(cv_skills, job_skills),
             "missing_skills": missing_skills(cv_skills, job_skills),
         }
