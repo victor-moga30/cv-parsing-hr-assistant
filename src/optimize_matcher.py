@@ -5,7 +5,7 @@ import pandas as pd
 from sentence_transformers import SentenceTransformer, util
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
-from baseline import baseline_hybrid_score
+from src.baseline import baseline_hybrid_score
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,7 +24,8 @@ def safe_list(value):
 def semantic_score(model, cv_text, job_text):
     cv_emb = model.encode(str(cv_text), convert_to_tensor=True, normalize_embeddings=True)
     job_emb = model.encode(str(job_text), convert_to_tensor=True, normalize_embeddings=True)
-    return util.cos_sim(cv_emb, job_emb).item()
+    score = util.cos_sim(cv_emb, job_emb).item()
+    return max(0.0, min(1.0, score))
 
 
 def optimize_weights():
@@ -33,12 +34,13 @@ def optimize_weights():
     df = pd.read_csv(DATA_DIR / "training_pairs.csv")
     val_df = df[df["split"] == "val"].copy()
 
-    model = SentenceTransformer(str(MODELS_DIR / "fine_tuned_sbert"))
+    model_path = MODELS_DIR / "fine_tuned_sbert"
+    model = SentenceTransformer(str(model_path))
 
     results = []
 
-    for semantic_w in [0.4, 0.5, 0.6, 0.7]:
-        for baseline_w in [0.1, 0.2, 0.3, 0.4]:
+    for semantic_w in [0.05, 0.10, 0.15, 0.20, 0.30, 0.40, 0.50]:
+        for baseline_w in [0.05, 0.10, 0.15, 0.20, 0.30]:
             skill_w = round(1 - semantic_w - baseline_w, 2)
 
             if skill_w < 0:
@@ -80,7 +82,7 @@ def optimize_weights():
     results_df.to_csv(REPORTS_DIR / "optimization_results.csv", index=False)
 
     print(results_df.head(10))
-    print("Salvat: reports/optimization_results.csv")
+    print("Saved reports/optimization_results.csv")
 
 
 if __name__ == "__main__":

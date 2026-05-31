@@ -4,11 +4,21 @@ from src.semantic_matcher import SemanticMatcher
 
 
 class FinalMatcher:
+    """
+    Final hybrid matcher used by the HR assistant.
+
+    The final score combines:
+    - semantic similarity from Sentence-BERT
+    - a classical baseline score
+    - explicit skill coverage
+
+    The weights below are selected from the optimization experiment
+    saved in reports/optimization_results.csv.
+    """
+
     def __init__(self, model_name="sentence-transformers/all-MiniLM-L6-v2"):
         self.semantic_matcher = SemanticMatcher(model_name)
 
-        # Cele mai bune ponderi din reports/optimization_results.csv:
-        # semantic_weight=0.4, baseline_weight=0.1, skill_weight=0.5
         self.semantic_weight = 0.40
         self.baseline_weight = 0.10
         self.skill_weight = 0.50
