@@ -1,4 +1,4 @@
-model,MAE,RMSE,Pearson,Spearman
-baseline_tfidf_skill,0.0138,0.0367,0.9988,0.6629
-pretrained_sbert,0.1715,0.1994,0.5833,0.5184
-fine_tuned_sbert,0.0078,0.0288,0.9705,0.6569
+model,MAE,MSE,RMSE,Pearson,Spearman,Accuracy,Precision,Recall,F1_score,Threshold
+baseline_tfidf_skill,0.0138,0.0013,0.0367,0.9988,0.6629,0.9708,0.0,0.0,0.0,0.5
+pretrained_sbert,0.1715,0.0397,0.1994,0.5833,0.5184,0.9592,0.325,0.3714,0.3467,0.5
+fine_tuned_sbert,0.0078,0.0008,0.0288,0.9705,0.6569,0.9933,1.0,0.7714,0.871,0.5
