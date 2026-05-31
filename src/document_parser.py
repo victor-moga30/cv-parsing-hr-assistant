@@ -24,12 +24,6 @@ def normalize_spaces(text: str) -> str:
 
 
 def extract_text_from_pdf_bytes(file_bytes: bytes) -> str:
-    """
-    Extrage text din PDF.
-    1. Prima incercare: pypdf, bun pentru PDF-uri digitale.
-    2. A doua incercare: PyMuPDF.
-    3. Fallback OCR: PyMuPDF transforma paginile in imagini, apoi pytesseract citeste textul.
-    """
     texts = []
 
     try:
@@ -114,47 +108,50 @@ def extract_text_from_uploaded_file(uploaded_file) -> str:
 
 
 def extract_applicant_info(text: str) -> Dict[str, Any]:
-    """
-    Extrage date simple despre aplicant.
-    Nu folosim gen, varsta, poza, etnie etc., ca sa nu introducem bias.
-    """
     raw_text = str(text)
     lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
     compact_text = normalize_spaces(raw_text)
 
     email_match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", raw_text)
-    phone_match = re.search(r"(\+?\d[\d\s().-]{7,}\d)", raw_text)
+
+    phone_match = re.search(
+        r"(\+?\d[\d\s().-]{7,}\d)",
+        raw_text,
+    )
 
     linkedin_match = re.search(
         r"(https?://)?(www\.)?linkedin\.com/in/[A-Za-z0-9_\-/%]+",
         raw_text,
-        flags=re.IGNORECASE
+        flags=re.IGNORECASE,
     )
 
     github_match = re.search(
         r"(https?://)?(www\.)?github\.com/[A-Za-z0-9_\-]+",
         raw_text,
-        flags=re.IGNORECASE
+        flags=re.IGNORECASE,
     )
 
     name = "Unknown"
 
-    for line in lines[:8]:
+    forbidden = [
+        "curriculum vitae",
+        "resume",
+        "email",
+        "phone",
+        "linkedin",
+        "github",
+        "address",
+        "summary",
+        "profile",
+        "education",
+        "experience",
+        "skills",
+    ]
+
+    for line in lines[:10]:
         clean_line = re.sub(r"[^A-Za-z .'-]", " ", line).strip()
         clean_line = re.sub(r"\s+", " ", clean_line)
-
         lower_line = clean_line.lower()
-        forbidden = [
-            "curriculum vitae",
-            "resume",
-            "email",
-            "phone",
-            "linkedin",
-            "github",
-            "address",
-            "summary",
-            "profile"
-        ]
 
         if len(clean_line.split()) in [2, 3] and not any(word in lower_line for word in forbidden):
             name = clean_line
@@ -166,5 +163,5 @@ def extract_applicant_info(text: str) -> Dict[str, Any]:
         "phone": phone_match.group(0).strip() if phone_match else "Unknown",
         "linkedin": linkedin_match.group(0) if linkedin_match else "Unknown",
         "github": github_match.group(0) if github_match else "Unknown",
-        "text_length": len(compact_text)
+        "text_length": len(compact_text),
     }
