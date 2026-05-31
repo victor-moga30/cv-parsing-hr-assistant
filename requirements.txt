@@ -13,3 +13,4 @@ datasets
 pypdf
 pytesseract
 pillow
+pymupdf
