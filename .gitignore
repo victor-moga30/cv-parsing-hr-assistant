@@ -1,15 +1,31 @@
-# AI models
+# Fine-tuned models are large.
+# Distribute them separately or use Git LFS.
 models/
 
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 
-# Virtual environment
+# Virtual environments
 .venv/
+venv/
+env/
 
-# Streamlit cache
+# Streamlit
 .streamlit/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# IDE and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Candidate exports that may contain personal data
+reports/hr_dashboard_results.csv
+
+# Packaging artefacts
+*.zip

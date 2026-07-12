@@ -1,0 +1,11 @@
+{
+  "base_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "random_seed": 42,
+  "training_pairs": 5592,
+  "batch_size": 8,
+  "epochs": 1,
+  "max_sequence_length": 256,
+  "warmup_steps": 70,
+  "loss": "CosineSimilarityLoss",
+  "split_strategy": "candidate-grouped 70/15/15"
+}

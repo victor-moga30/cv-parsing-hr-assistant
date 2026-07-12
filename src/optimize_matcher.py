@@ -2,10 +2,10 @@ import ast
 from pathlib import Path
 
 import pandas as pd
-from sentence_transformers import SentenceTransformer, util
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 from src.baseline import baseline_hybrid_score
+from src.semantic_matcher import SemanticMatcher
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -13,76 +13,290 @@ DATA_DIR = BASE_DIR / "data"
 REPORTS_DIR = BASE_DIR / "reports"
 MODELS_DIR = BASE_DIR / "models"
 
+TRAINING_PAIRS_PATH = DATA_DIR / "training_pairs.csv"
+MODEL_PATH = MODELS_DIR / "fine_tuned_sbert"
+OPTIMIZATION_REPORT_PATH = REPORTS_DIR / "optimization_results.csv"
+
+
+# This is intentionally a constrained grid search.
+#
+# The training labels are generated from skill coverage. Therefore, a fully
+# unrestricted optimisation would trivially prefer a skill-only score:
+#
+# semantic_weight = 0
+# baseline_weight = 0
+# skill_weight = 1
+#
+# These constraints preserve the intended hybrid architecture while still
+# selecting the best combination on the validation set.
+SEMANTIC_WEIGHTS = [0.40, 0.50, 0.60, 0.70]
+BASELINE_WEIGHTS = [0.10, 0.20, 0.30, 0.40]
+
 
 def safe_list(value):
-    try:
-        return ast.literal_eval(value) if isinstance(value, str) else value
-    except Exception:
-        return []
+    """
+    Convert a value loaded from the CSV into a Python list.
+
+    The skill columns are normally stored as string representations
+    of lists, for example:
+        "['python', 'java', 'sql']"
+    """
+    if isinstance(value, list):
+        return value
+
+    if isinstance(value, (tuple, set)):
+        return list(value)
+
+    if isinstance(value, str):
+        try:
+            parsed = ast.literal_eval(value)
+
+            if isinstance(parsed, (list, tuple, set)):
+                return list(parsed)
+
+            return []
+        except (ValueError, SyntaxError):
+            return []
+
+    return []
 
 
-def semantic_score(model, cv_text, job_text):
-    cv_emb = model.encode(str(cv_text), convert_to_tensor=True, normalize_embeddings=True)
-    job_emb = model.encode(str(job_text), convert_to_tensor=True, normalize_embeddings=True)
-    score = util.cos_sim(cv_emb, job_emb).item()
-    return max(0.0, min(1.0, score))
+def load_validation_data():
+    """
+    Load and validate the validation portion of training_pairs.csv.
+    """
+    if not TRAINING_PAIRS_PATH.is_file():
+        raise FileNotFoundError(
+            f"Training data was not found at: {TRAINING_PAIRS_PATH}"
+        )
+
+    df = pd.read_csv(TRAINING_PAIRS_PATH)
+
+    required_columns = {
+        "cv_text",
+        "job_text",
+        "cv_skills",
+        "job_skills",
+        "label",
+        "split",
+    }
+
+    missing_columns = required_columns.difference(df.columns)
+
+    if missing_columns:
+        raise ValueError(
+            "training_pairs.csv is missing required columns: "
+            + ", ".join(sorted(missing_columns))
+        )
+
+    validation_df = df[df["split"] == "val"].copy()
+
+    if validation_df.empty:
+        raise ValueError(
+            "No rows with split='val' were found in training_pairs.csv."
+        )
+
+    return validation_df
+
+
+def precompute_validation_components(
+    validation_df,
+    semantic_matcher,
+):
+    """
+    Calculate the expensive NLP components once for every validation pair.
+
+    Previously, the semantic model was executed again for every possible
+    weight combination. That was unnecessary because changing the weights
+    does not change the model outputs.
+
+    All scores are normalised from [0, 100] to [0, 1] before optimisation.
+    """
+
+    component_rows = []
+    total_rows = len(validation_df)
+
+    for position, (_, row) in enumerate(
+        validation_df.iterrows(),
+        start=1,
+    ):
+        cv_text = str(row["cv_text"])
+        job_text = str(row["job_text"])
+
+        cv_skills = safe_list(row["cv_skills"])
+        job_skills = safe_list(row["job_skills"])
+
+        baseline = baseline_hybrid_score(
+            cv_text,
+            job_text,
+            cv_skills,
+            job_skills,
+        )
+
+        # This uses the exact same semantic pipeline as the application:
+        # cleaning, chunking, cosine comparison and score conversion.
+        semantic_score = semantic_matcher.similarity_score(
+            cv_text,
+            job_text,
+        )
+
+        component_rows.append({
+            "label": float(row["label"]),
+
+            # Convert all component scores to the [0, 1] interval.
+            "semantic_score": semantic_score / 100.0,
+            "baseline_score": baseline["baseline_score"] / 100.0,
+            "skill_score": baseline["skill_score"] / 100.0,
+        })
+
+        if position % 100 == 0 or position == total_rows:
+            print(
+                f"Precomputed {position}/{total_rows} validation pairs"
+            )
+
+    return pd.DataFrame(component_rows)
 
 
 def optimize_weights():
-    REPORTS_DIR.mkdir(exist_ok=True)
+    """
+    Select the best hybrid weights using the validation set.
+    """
+    REPORTS_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
-    df = pd.read_csv(DATA_DIR / "training_pairs.csv")
-    val_df = df[df["split"] == "val"].copy()
+    if not MODEL_PATH.is_dir():
+        raise FileNotFoundError(
+            "The fine-tuned model is missing. Expected directory: "
+            f"{MODEL_PATH}"
+        )
 
-    model_path = MODELS_DIR / "fine_tuned_sbert"
-    model = SentenceTransformer(str(model_path))
+    validation_df = load_validation_data()
+
+    semantic_matcher = SemanticMatcher(
+        str(MODEL_PATH)
+    )
+
+    components_df = precompute_validation_components(
+        validation_df,
+        semantic_matcher,
+    )
+
+    y_true = components_df["label"].to_numpy(
+        dtype=float
+    )
+
+    semantic_scores = components_df[
+        "semantic_score"
+    ].to_numpy(dtype=float)
+
+    baseline_scores = components_df[
+        "baseline_score"
+    ].to_numpy(dtype=float)
+
+    skill_scores = components_df[
+        "skill_score"
+    ].to_numpy(dtype=float)
 
     results = []
 
-    for semantic_w in [0.05, 0.10, 0.15, 0.20, 0.30, 0.40, 0.50]:
-        for baseline_w in [0.05, 0.10, 0.15, 0.20, 0.30]:
-            skill_w = round(1 - semantic_w - baseline_w, 2)
+    for semantic_weight in SEMANTIC_WEIGHTS:
+        for baseline_weight in BASELINE_WEIGHTS:
+            skill_weight = round(
+                1.0
+                - semantic_weight
+                - baseline_weight,
+                2,
+            )
 
-            if skill_w < 0:
+            # Skip combinations whose weights would exceed 1.
+            if skill_weight < 0.0:
                 continue
 
-            y_true = []
-            y_pred = []
+            predictions = (
+                semantic_weight * semantic_scores
+                + baseline_weight * baseline_scores
+                + skill_weight * skill_scores
+            )
 
-            for _, row in val_df.iterrows():
-                cv_text = row["cv_text"]
-                job_text = row["job_text"]
-                cv_skills = safe_list(row["cv_skills"])
-                job_skills = safe_list(row["job_skills"])
+            mae = mean_absolute_error(
+                y_true,
+                predictions,
+            )
 
-                baseline = baseline_hybrid_score(cv_text, job_text, cv_skills, job_skills)
-                sem = semantic_score(model, cv_text, job_text) * 100
-
-                final_score = (
-                    semantic_w * sem
-                    + baseline_w * baseline["baseline_score"]
-                    + skill_w * baseline["skill_score"]
-                ) / 100
-
-                y_true.append(float(row["label"]))
-                y_pred.append(final_score)
-
-            mae = mean_absolute_error(y_true, y_pred)
-            rmse = mean_squared_error(y_true, y_pred) ** 0.5
+            rmse = (
+                mean_squared_error(
+                    y_true,
+                    predictions,
+                )
+                ** 0.5
+            )
 
             results.append({
-                "semantic_weight": semantic_w,
-                "baseline_weight": baseline_w,
-                "skill_weight": skill_w,
-                "MAE": round(mae, 4),
-                "RMSE": round(rmse, 4),
+                "semantic_weight": semantic_weight,
+                "baseline_weight": baseline_weight,
+                "skill_weight": skill_weight,
+                "MAE": round(float(mae), 4),
+                "RMSE": round(float(rmse), 4),
             })
 
-    results_df = pd.DataFrame(results).sort_values("RMSE")
-    results_df.to_csv(REPORTS_DIR / "optimization_results.csv", index=False)
+    if not results:
+        raise RuntimeError(
+            "The configured weight grid produced no valid combinations."
+        )
 
-    print(results_df.head(10))
-    print("Saved reports/optimization_results.csv")
+    results_df = (
+        pd.DataFrame(results)
+        .sort_values(
+            ["RMSE", "MAE"],
+            ascending=True,
+        )
+        .reset_index(drop=True)
+    )
+
+    results_df.to_csv(
+        OPTIMIZATION_REPORT_PATH,
+        index=False,
+    )
+
+    best = results_df.iloc[0]
+
+    print("\nTop validation combinations:")
+    print(
+        results_df
+        .head(10)
+        .to_string(index=False)
+    )
+
+    print("\nBest validation weights:")
+    print(
+        f"semantic_weight = "
+        f"{best['semantic_weight']:.2f}"
+    )
+    print(
+        f"baseline_weight = "
+        f"{best['baseline_weight']:.2f}"
+    )
+    print(
+        f"skill_weight = "
+        f"{best['skill_weight']:.2f}"
+    )
+    print(
+        f"MAE = {best['MAE']:.4f}"
+    )
+    print(
+        f"RMSE = {best['RMSE']:.4f}"
+    )
+
+    print(
+        f"\nSaved: {OPTIMIZATION_REPORT_PATH}"
+    )
+
+    print(
+        "Copy the three best weights into "
+        "src/final_matcher.py before running the evaluation."
+    )
 
 
 if __name__ == "__main__":

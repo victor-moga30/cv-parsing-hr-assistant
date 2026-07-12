@@ -1,84 +1,288 @@
-from sentence_transformers import SentenceTransformer, util
 import re
+from collections import OrderedDict
+from typing import List, Tuple
+
+from sentence_transformers import (
+    SentenceTransformer,
+    util,
+)
 
 
 class SemanticMatcher:
-    def __init__(self, model_name="sentence-transformers/all-MiniLM-L6-v2"):
-        self.model = SentenceTransformer(model_name)
+    """
+    Sentence-BERT matcher shared by the runtime,
+    optimiser and evaluator.
 
-    def _clean_text(self, text):
-        text = str(text)
-        text = text.replace("\n", " ")
-        text = re.sub(r"\s+", " ", text)
+    Each job chunk is compared with all CV chunks.
+    The best CV match for each job chunk is retained,
+    and those best similarities are averaged.
+    """
+
+    def __init__(
+        self,
+        model_name: str = (
+            "sentence-transformers/"
+            "all-MiniLM-L6-v2"
+        ),
+        max_words_per_chunk: int = 80,
+        cache_size: int = 128,
+    ):
+        if max_words_per_chunk <= 0:
+            raise ValueError(
+                "max_words_per_chunk must be "
+                "greater than zero."
+            )
+
+        if cache_size < 0:
+            raise ValueError(
+                "cache_size cannot be negative."
+            )
+
+        self.model = SentenceTransformer(
+            model_name
+        )
+
+        self.max_words_per_chunk = (
+            max_words_per_chunk
+        )
+
+        self.cache_size = cache_size
+
+        self._embedding_cache = (
+            OrderedDict()
+        )
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        text = str(text).replace(
+            "\x00",
+            " ",
+        )
+
+        text = text.replace(
+            "\r\n",
+            "\n",
+        ).replace(
+            "\r",
+            "\n",
+        )
+
+        text = re.sub(
+            r"[ \t\f\v]+",
+            " ",
+            text,
+        )
+
+        text = re.sub(
+            r"\n+",
+            "\n",
+            text,
+        )
+
         return text.strip()
 
-    def _split_into_chunks(self, text, max_words=80):
-        text = self._clean_text(text)
+    def _split_into_chunks(
+        self,
+        text: str,
+    ) -> List[str]:
+        """
+        Split text into chunks that never exceed
+        max_words_per_chunk.
+        """
+        cleaned_text = self._clean_text(
+            text
+        )
 
-        parts = re.split(r"(?<=[.!?])\s+| - |\u2022", text)
+        if not cleaned_text:
+            return []
+
+        parts = re.split(
+            r"(?<=[.!?])\s+"
+            r"|\n+"
+            r"|\s[-–—]\s"
+            r"|\u2022"
+            r"|●",
+            cleaned_text,
+        )
 
         chunks = []
-        current = []
+        current_words = []
 
         for part in parts:
-            words = part.strip().split()
-            if not words:
-                continue
+            remaining_words = (
+                part.strip().split()
+            )
 
-            if len(current) + len(words) <= max_words:
-                current.extend(words)
-            else:
-                if current:
-                    chunks.append(" ".join(current))
-                current = words
+            while remaining_words:
+                available_space = (
+                    self.max_words_per_chunk
+                    - len(current_words)
+                )
 
-        if current:
-            chunks.append(" ".join(current))
+                current_words.extend(
+                    remaining_words[
+                        :available_space
+                    ]
+                )
+
+                remaining_words = (
+                    remaining_words[
+                        available_space:
+                    ]
+                )
+
+                if (
+                    len(current_words)
+                    == self.max_words_per_chunk
+                ):
+                    chunks.append(
+                        " ".join(
+                            current_words
+                        )
+                    )
+
+                    current_words = []
+
+        if current_words:
+            chunks.append(
+                " ".join(
+                    current_words
+                )
+            )
 
         return chunks
 
-    def _cosine_to_percent(self, cosine):
+    def _encode_text(
+        self,
+        text: str,
+    ) -> Tuple[List[str], object]:
         """
-        Pentru sentence embeddings, cosine-ul brut nu trebuie citit direct ca procent.
-        Transformam scorul intr-un procent mai realist pentru dashboard.
+        Encode one document and keep a small LRU
+        cache of recent embeddings.
         """
-        if cosine <= 0.20:
-            return cosine * 100
+        cleaned_text = self._clean_text(
+            text
+        )
 
-        if cosine >= 0.65:
-            return 100.0
+        if not cleaned_text:
+            return [], None
 
-        return 40.0 + ((cosine - 0.20) / (0.65 - 0.20)) * 60.0
+        if (
+            cleaned_text
+            in self._embedding_cache
+        ):
+            (
+                chunks,
+                embeddings,
+            ) = self._embedding_cache.pop(
+                cleaned_text
+            )
 
-    def similarity_score(self, cv_text, job_text):
-        cv_chunks = self._split_into_chunks(cv_text)
-        job_chunks = self._split_into_chunks(job_text)
+            self._embedding_cache[
+                cleaned_text
+            ] = (
+                chunks,
+                embeddings,
+            )
 
-        if not cv_chunks or not job_chunks:
+            return (
+                chunks,
+                embeddings,
+            )
+
+        chunks = self._split_into_chunks(
+            cleaned_text
+        )
+
+        if not chunks:
+            return [], None
+
+        embeddings = self.model.encode(
+            chunks,
+            convert_to_tensor=True,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+        )
+
+        if self.cache_size > 0:
+            self._embedding_cache[
+                cleaned_text
+            ] = (
+                chunks,
+                embeddings,
+            )
+
+            while (
+                len(self._embedding_cache)
+                > self.cache_size
+            ):
+                self._embedding_cache.popitem(
+                    last=False
+                )
+
+        return (
+            chunks,
+            embeddings,
+        )
+
+    def clear_cache(self) -> None:
+        self._embedding_cache.clear()
+
+    def similarity_score(
+        self,
+        cv_text: str,
+        job_text: str,
+    ) -> float:
+        (
+            cv_chunks,
+            cv_embeddings,
+        ) = self._encode_text(
+            cv_text
+        )
+
+        (
+            job_chunks,
+            job_embeddings,
+        ) = self._encode_text(
+            job_text
+        )
+
+        if (
+            not cv_chunks
+            or not job_chunks
+            or cv_embeddings is None
+            or job_embeddings is None
+        ):
             return 0.0
 
-        cv_embeddings = self.model.encode(
-            cv_chunks,
-            convert_to_tensor=True,
-            normalize_embeddings=True
+        similarity_matrix = util.cos_sim(
+            job_embeddings,
+            cv_embeddings,
         )
 
-        job_embeddings = self.model.encode(
-            job_chunks,
-            convert_to_tensor=True,
-            normalize_embeddings=True
+        best_scores = [
+            similarity_matrix[
+                index
+            ].max().item()
+            for index in range(
+                len(job_chunks)
+            )
+        ]
+
+        average_best_score = (
+            sum(best_scores)
+            / len(best_scores)
         )
 
-        similarity_matrix = util.cos_sim(job_embeddings, cv_embeddings)
+        bounded_score = max(
+            0.0,
+            min(
+                1.0,
+                average_best_score,
+            ),
+        )
 
-        best_scores = []
-
-        for i in range(len(job_chunks)):
-            best_match_for_requirement = similarity_matrix[i].max().item()
-            best_scores.append(best_match_for_requirement)
-
-        average_best_score = sum(best_scores) / len(best_scores)
-
-        semantic_percent = self._cosine_to_percent(average_best_score)
-
-        return round(max(0.0, min(100.0, semantic_percent)), 2)
+        return round(
+            bounded_score * 100.0,
+            2,
+        )
