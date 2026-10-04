@@ -1,6 +1,6 @@
 # CV Parsing and HR Assistant
 
-## Echipa
+## Team
 
 - Matei Amalia Andreea
 - Moga Victor Gabriel
@@ -8,180 +8,181 @@
 
 ---
 
-## Problema abordata
+## Problem Addressed
 
-In procesele moderne de recrutare, departamentele de HR trebuie sa analizeze rapid un numar mare de CV-uri pentru fiecare pozitie disponibila. Analiza manuala este consumatoare de timp, poate fi neuniforma si poate introduce bias in procesul de selectie.
+In modern recruitment processes, HR departments need to quickly analyze a large number of CVs for each available position. Manual analysis is time-consuming, can be inconsistent, and may introduce bias into the selection process.
 
-Scopul proiectului este dezvoltarea unui sistem inteligent de tip AI Agent care analizeaza automat CV-uri si descrieri de job, extrage competente relevante, calculeaza un scor de potrivire si ofera recomandari explicabile pentru recrutori.
+The goal of this project is to develop an intelligent AI Agent system that automatically analyzes CVs and job descriptions, extracts relevant skills, calculates a matching score, and provides explainable recommendations for recruiters.
 
-Aplicatia nu ia decizii automate de angajare. Ea ofera suport decizional pentru utilizatorul uman.
+The application does not make automated hiring decisions. It provides decision support for the human user.
 
 ---
 
-## Ce problema rezolva proiectul
+## What Problem Does the Project Solve?
 
-Proiectul rezolva problema filtrarii initiale a CV-urilor pentru o anumita descriere de job.
+The project addresses the problem of initial CV screening for a given job description.
 
-Aplicatia primeste mai multe CV-uri, extrage informatiile importante din ele si le compara cu cerintele postului. La final, candidatii sunt ordonati dupa scorul de potrivire, iar recrutorul primeste explicatii, skill-uri potrivite, skill-uri lipsa, recomandari si intrebari pentru interviu.
+The application receives multiple CVs, extracts relevant information from them, and compares it with the job requirements. At the end, candidates are ranked according to their matching score, while the recruiter receives explanations, matched skills, missing skills, recommendations, and interview questions.
 
 ---
 
 ## Input
 
-Aplicatia primeste:
+The application receives:
 
-- unul sau mai multe CV-uri in format PDF, TXT sau imagine;
-- o descriere de job introdusa de utilizator;
-- optional, date deja procesate din folderul `data/`.
+- one or more CVs in PDF, TXT, or image format;
+- a job description entered by the user;
+- optionally, already processed data from the `data/` folder.
 
 ---
 
 ## Output
 
-Aplicatia genereaza:
+The application generates:
 
-- scor final de matching pentru fiecare CV;
-- ranking al candidatilor;
-- top 3 candidati;
-- skill-uri potrivite;
-- skill-uri lipsa;
-- scor semantic;
-- scor TF-IDF;
-- scor bazat pe acoperirea skill-urilor;
-- recomandare HR;
-- intrebari personalizate pentru interviu;
+- final matching score for each CV;
+- candidate ranking;
+- top 3 candidates;
+- matched skills;
+- missing skills;
+- semantic score;
+- TF-IDF score;
+- skill coverage score;
+- HR recommendation;
+- personalized interview questions;
 - red flags;
-- dashboard cu grafice si statistici;
-- metrici de evaluare a modelelor.
+- dashboard with charts and statistics;
+- model evaluation metrics.
 
 ---
 
-## Utilizator tinta
+## Target Users
 
-Aplicatia este destinata recrutorilor, specialistilor HR sau echipelor tehnice care doresc o prima filtrare explicabila a CV-urilor.
+The application is intended for recruiters, HR specialists, or technical teams that want an explainable first-stage CV screening process.
 
 ---
 
-## Tipul de AI folosit
+## Type of AI Used
 
-Proiectul foloseste o combinatie de metode NLP, machine learning si modele de tip Sentence-BERT.
+The project uses a combination of NLP methods, machine learning, and Sentence-BERT models.
 
-Componente principale:
+Main components:
 
-1. NLP clasic:
-   - curatare text;
-   - extragere de skill-uri;
+1. Classical NLP:
+   - text cleaning;
+   - skill extraction;
    - TF-IDF;
    - cosine similarity.
 
 2. Sentence-BERT:
-   - model pretrained `all-MiniLM-L6-v2`;
-   - model fine-tuned pe perechi CV - job description.
+   - pretrained `all-MiniLM-L6-v2` model;
+   - model fine-tuned on CV–job description pairs.
 
 3. AI Agent:
-   - agentul orchestreaza mai multe tool-uri interne;
-   - fiecare tool are o responsabilitate clara;
-   - agentul urmeaza un flux complet de analiza si produce rezultatul final explicabil.
+   - the agent orchestrates several internal tools;
+   - each tool has a clearly defined responsibility;
+   - the agent follows a complete analysis pipeline and produces an explainable final result.
 
 ---
 
-## Arhitectura AI Agent
+## AI Agent Architecture
 
-Fluxul agentului este:
+The agent workflow is:
 
 ```text
 User input
   |
-  |-- CV-uri PDF/TXT/imagini
+  |-- CVs in PDF/TXT/image format
   |-- Job description
   v
 HRAssistantAgent
   |
   |-- DocumentParserTool
-  |      extrage text din PDF/TXT/imagini
+  |      extracts text from PDF/TXT/images
   |
   |-- ApplicantInfoTool
-  |      extrage nume, email, telefon, LinkedIn, GitHub
+  |      extracts name, email, phone number, LinkedIn, GitHub
   |
   |-- TextCleaningTool
-  |      normalizeaza si curata textul
+  |      normalizes and cleans the text
   |
   |-- SkillExtractionTool
-  |      extrage competente din CV si job description
+  |      extracts skills from the CV and job description
   |
   |-- MatchingTool
-  |      calculeaza semantic score, TF-IDF score, skill score si final score
+  |      calculates semantic score, TF-IDF score, skill score,
+  |      and final score
   |
   |-- RecommendationTool
-  |      genereaza recomandari, intrebari si red flags
+  |      generates recommendations, questions, and red flags
   v
-Output final:
-ranking, scoruri, explicatii si recomandari
+Final output:
+ranking, scores, explanations, and recommendations
 ```
 
 ---
 
-## Tool-uri interne folosite de agent
+## Internal Tools Used by the Agent
 
-Agentul foloseste urmatoarele tool-uri interne. Aceste tool-uri sunt apelate in ordine de clasa `HRAssistantAgent`.
+The agent uses the following internal tools. These tools are called in sequence by the `HRAssistantAgent` class.
 
 ---
 
 ### 1. DocumentParserTool
 
-Acest tool extrage textul din fisierele incarcate de utilizator.
+This tool extracts text from files uploaded by the user.
 
-Suporta:
+It supports:
 
-- PDF-uri digitale;
-- fisiere TXT;
-- imagini;
-- PDF-uri scanate, daca este instalat Tesseract OCR.
+- digital PDFs;
+- TXT files;
+- images;
+- scanned PDFs, if Tesseract OCR is installed.
 
-Pentru PDF-uri se foloseste initial `pypdf`. Daca extragerea nu este suficienta, se foloseste PyMuPDF. Pentru fisiere scanate sau imagini se foloseste OCR.
+For PDFs, `pypdf` is used first. If text extraction is insufficient, PyMuPDF is used. OCR is used for scanned files or images.
 
-Rolul acestui tool este important deoarece, in practica, majoritatea CV-urilor sunt trimise in format PDF.
+This tool plays an important role because, in practice, most CVs are submitted in PDF format.
 
 ---
 
 ### 2. ApplicantInfoTool
 
-Acest tool extrage informatii de baza despre candidat:
+This tool extracts basic information about the candidate:
 
-- nume;
+- name;
 - email;
-- telefon;
+- phone number;
 - LinkedIn;
 - GitHub;
-- lungimea textului extras.
+- length of the extracted text.
 
-Aplicatia nu foloseste informatii sensibile precum varsta, gen, etnie, poza sau alte date care pot introduce bias.
+The application does not use sensitive information such as age, gender, ethnicity, photo, or other data that could introduce bias.
 
-Scopul acestui tool este sa ofere recrutorului date utile de contact, fara sa influenteze scorul de matching prin informatii personale sensibile.
+The purpose of this tool is to provide recruiters with useful contact information without allowing sensitive personal information to influence the matching score.
 
 ---
 
 ### 3. TextCleaningTool
 
-Acest tool curata si normalizeaza textul extras din CV si job description.
+This tool cleans and normalizes the text extracted from the CV and job description.
 
-Exemple de preprocesare:
+Examples of preprocessing:
 
-- eliminare spatii inutile;
-- normalizare text;
-- reparare variante precum `C + +`;
-- transformare intr-o forma mai usor de procesat;
-- pregatirea textului pentru extragerea de skill-uri si matching semantic.
+- removing unnecessary spaces;
+- text normalization;
+- repairing variants such as `C + +`;
+- transforming the text into a format that is easier to process;
+- preparing the text for skill extraction and semantic matching.
 
-Acest pas este necesar deoarece textul extras din PDF-uri poate contine spatii, randuri rupte sau caractere neuniforme.
+This step is necessary because text extracted from PDFs may contain irregular spacing, broken lines, or inconsistent characters.
 
 ---
 
 ### 4. SkillExtractionTool
 
-Acest tool identifica competentele tehnice si soft skills din CV si job description.
+This tool identifies technical skills and soft skills from the CV and job description.
 
-Exemple de skill-uri detectate:
+Examples of detected skills:
 
 - Python;
 - Java;
@@ -214,9 +215,9 @@ Exemple de skill-uri detectate:
 - Teamwork;
 - Problem Solving.
 
-Skill-urile sunt extrase folosind un dictionar de competente si alias-uri.
+Skills are extracted using a dictionary of skills and aliases.
 
-Exemplu:
+Example:
 
 ```text
 "py" -> Python
@@ -226,23 +227,23 @@ Exemplu:
 "object oriented programming" -> OOP
 ```
 
-Acest tool ajuta la obtinerea unui scor explicabil, deoarece recrutorul poate vedea exact ce skill-uri au fost gasite si ce skill-uri lipsesc.
+This tool helps produce an explainable score because the recruiter can see exactly which skills were found and which skills are missing.
 
 ---
 
 ### 5. MatchingTool
 
-Acest tool calculeaza scorurile de potrivire dintre CV si job description.
+This tool calculates the matching scores between a CV and a job description.
 
-Sunt calculate mai multe scoruri:
+Several scores are calculated:
 
-- `semantic_score` - similaritate semantica folosind Sentence-BERT;
-- `tfidf_score` - similaritate clasica intre texte folosind TF-IDF;
-- `skill_score` - procentul de skill-uri cerute de job care apar in CV;
-- `baseline_score` - scor hibrid clasic;
-- `final_score` - scor final folosit pentru ranking.
+- `semantic_score` - semantic similarity using Sentence-BERT;
+- `tfidf_score` - classical text similarity using TF-IDF;
+- `skill_score` - percentage of job-required skills found in the CV;
+- `baseline_score` - classical hybrid score;
+- `final_score` - final score used for ranking.
 
-Formula generala este:
+The general formula is:
 
 ```text
 final_score =
@@ -251,57 +252,57 @@ final_score =
   + skill_weight * skill_score
 ```
 
-Aceasta combinatie face scorul mai stabil si mai explicabil.
+This combination makes the score more stable and explainable.
 
-Scorul semantic ajuta atunci cand CV-ul si job description-ul folosesc formulari diferite, dar au sens apropiat.
+The semantic score is useful when the CV and job description use different wording but express similar meanings.
 
-Scorul TF-IDF ajuta la compararea clasica a textelor.
+The TF-IDF score provides a classical text similarity comparison.
 
-Scorul pe skill-uri ajuta la explicabilitate, deoarece se poate vedea concret ce cerinte sunt indeplinite.
+The skill score improves explainability because it shows exactly which requirements are satisfied.
 
 ---
 
 ### 6. RecommendationTool
 
-Acest tool genereaza:
+This tool generates:
 
-- recomandare HR;
-- intrebari de interviu;
+- HR recommendation;
+- interview questions;
 - red flags;
-- verdict final.
+- final verdict.
 
-Exemple de verdict:
+Examples of verdicts:
 
 - Strong match;
 - Good match;
 - Medium match;
 - Weak match.
 
-Exemple de recomandari:
+Examples of recommendations:
 
-- candidatul este potrivit pentru interviu tehnic;
-- candidatul poate fi pastrat ca backup;
-- candidatul are prea multe skill-uri lipsa;
-- profilul trebuie verificat prin intrebari practice.
+- the candidate is suitable for a technical interview;
+- the candidate can be kept as a backup option;
+- the candidate is missing too many required skills;
+- the profile should be further evaluated through practical questions.
 
-Exemple de intrebari generate:
+Examples of generated questions:
 
 - Describe a concrete project where you used Python.
 - Do you have experience with Docker or a similar technology?
 - What was the most complex technical project you worked on?
 
-Exemple de red flags:
+Examples of red flags:
 
-- text extras foarte scurt din CV;
-- acoperire redusa a skill-urilor cerute;
-- similaritate semantica redusa;
-- multe skill-uri lipsa.
+- very little text extracted from the CV;
+- low coverage of required skills;
+- low semantic similarity;
+- many missing skills.
 
 ---
 
-## Planificarea pasilor agentului
+## Agent Step Planning
 
-Agentul executa urmatorii pasi:
+The agent executes the following steps:
 
 ```text
 1. extract_applicant_info
@@ -316,20 +317,20 @@ Agentul executa urmatorii pasi:
 10. return_explainable_result
 ```
 
-Acest flux arata ca agentul nu intoarce doar un scor simplu, ci coordoneaza mai multe instrumente software pentru a produce un rezultat final complet si explicabil.
+This workflow shows that the agent does not simply return a single score, but instead coordinates several software tools to produce a complete and explainable result.
 
 ---
 
-## Schema solutiei
+## Solution Architecture
 
 ```text
-CV PDF/TXT/Imagine + Job Description
+CV PDF/TXT/Image + Job Description
         |
         v
 Document parsing
         |
         v
-Applicant info extraction
+Applicant information extraction
         |
         v
 Text cleaning
@@ -344,12 +345,12 @@ Semantic matching + TF-IDF + skill coverage
 Final score
         |
         v
-Ranking + recomandari + dashboard + metrici
+Ranking + recommendations + dashboard + metrics
 ```
 
 ---
 
-## Structura proiectului
+## Project Structure
 
 ```text
 .
@@ -385,21 +386,21 @@ Ranking + recomandari + dashboard + metrici
 
 ---
 
-## Rulare proiect
+## Running the Project
 
-### 1. Instalare dependinte
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Pentru OCR pe PDF-uri scanate sau imagini trebuie instalat separat Tesseract OCR in sistem.
+For OCR on scanned PDFs or images, Tesseract OCR must be installed separately on the system.
 
-Pentru PDF-uri digitale, OCR-ul nu este obligatoriu.
+OCR is not required for digital PDFs.
 
 ---
 
-### 2. Rulare dashboard
+### 2. Run the Dashboard
 
 ```bash
 streamlit run app.py
@@ -407,7 +408,7 @@ streamlit run app.py
 
 ---
 
-### 3. Rulare demo CLI
+### 3. Run the CLI Demo
 
 ```bash
 python main.py
@@ -415,7 +416,7 @@ python main.py
 
 ---
 
-### 4. Regenerare metrici
+### 4. Regenerate Metrics
 
 ```bash
 python -m src.evaluate
@@ -423,7 +424,7 @@ python -m src.evaluate
 
 ---
 
-### 5. Antrenare model fine-tuned
+### 5. Train the Fine-Tuned Model
 
 ```bash
 python -m src.train_finetune
@@ -433,63 +434,63 @@ python -m src.train_finetune
 
 ## Dataset
 
-Proiectul foloseste date procesate in folderul `data/`.
+The project uses processed data stored in the `data/` folder.
 
-Fisiere importante:
+Important files:
 
 - `processed_resumes.csv`;
 - `processed_jobs.csv`;
 - `training_pairs.csv`.
 
-Perechile CV - job sunt etichetate prin acoperirea skill-urilor cerute de job. Label-ul este intre 0 si 1.
+CV–job pairs are labeled according to the coverage of skills required by the job. The label ranges from 0 to 1.
 
-Aceasta eticheta reprezinta cat de bine se potriveste un CV cu o descriere de job.
+This label represents how well a CV matches a job description.
 
 ---
 
-## Modele evaluate
+## Evaluated Models
 
-Au fost evaluate trei variante.
+Three approaches were evaluated.
 
 ---
 
 ### 1. baseline_tfidf_skill
 
-Acesta este modelul de baza.
+This is the baseline model.
 
-Foloseste:
+It uses:
 
-- similaritate TF-IDF;
-- acoperirea skill-urilor;
-- scor hibrid.
+- TF-IDF similarity;
+- skill coverage;
+- hybrid scoring.
 
-Acest model este explicabil, dar poate rata potriviri semantice daca termenii din CV si job description sunt exprimati diferit.
+This model is explainable, but it may miss semantic matches when concepts in the CV and job description are expressed using different wording.
 
 ---
 
 ### 2. pretrained_sbert
 
-Acest model foloseste Sentence-BERT pretrained.
+This model uses a pretrained Sentence-BERT model.
 
-Avantajul sau este ca poate compara texte semantic, nu doar prin potrivire exacta de cuvinte.
+Its advantage is that it can compare texts semantically rather than relying only on exact word matching.
 
-De exemplu, poate intelege ca doua formulari diferite pot avea sens apropiat.
+For example, it can understand that two different expressions may have similar meanings.
 
 ---
 
 ### 3. fine_tuned_sbert
 
-Acesta este modelul final imbunatatit.
+This is the final improved model.
 
-Modelul Sentence-BERT a fost adaptat pe perechi CV - job description, astfel incat sa invete mai bine ce inseamna potrivire intre un candidat si o descriere de job.
+The Sentence-BERT model was adapted using CV–job description pairs so that it could better learn what constitutes a match between a candidate and a job description.
 
-Acest model este folosit pentru scorul semantic final.
+This model is used for the final semantic score.
 
 ---
 
-## Metrici folosite
+## Evaluation Metrics
 
-Pentru evaluare s-au folosit:
+The following metrics were used for evaluation:
 
 - MAE;
 - MSE;
@@ -503,17 +504,17 @@ Pentru evaluare s-au folosit:
 - confusion matrix;
 - classification report.
 
-Accuracy nu este suficienta, deoarece datele pot fi dezechilibrate. De aceea se folosesc si Precision, Recall si F1-score.
+Accuracy alone is not sufficient because the data may be imbalanced. Therefore, Precision, Recall, and F1-score are also used.
 
 ---
 
-## Interpretarea rezultatelor
+## Interpretation of Results
 
-Baseline-ul poate avea accuracy mare daca majoritatea perechilor sunt negative, dar poate avea F1-score slab pentru clasa pozitiva.
+The baseline model may achieve high accuracy if most pairs are negative, while still obtaining a poor F1-score for the positive class.
 
-Modelul fine-tuned SBERT este mai relevant deoarece invata similaritatea dintre CV si job description, nu doar potrivirea exacta a termenilor.
+The fine-tuned SBERT model is more relevant because it learns similarity between CVs and job descriptions rather than relying only on exact term matching.
 
-Astfel, evaluarea proiectului nu se bazeaza doar pe accuracy, ci si pe metrici mai relevante pentru problema de matching, cum ar fi:
+Therefore, the project evaluation is not based solely on accuracy, but also on metrics that are more relevant for the matching problem, such as:
 
 - F1-score;
 - Precision;
@@ -526,127 +527,127 @@ Astfel, evaluarea proiectului nu se bazeaza doar pe accuracy, ci si pe metrici m
 
 ## Dashboard
 
-Dashboard-ul Streamlit ofera:
+The Streamlit dashboard provides:
 
-- incarcare multipla de CV-uri;
-- introducere job description;
-- analiza automata;
-- ranking candidati;
-- top 3 candidati;
-- recomandari;
-- intrebari de interviu;
+- multiple CV uploads;
+- job description input;
+- automatic analysis;
+- candidate ranking;
+- top 3 candidates;
+- recommendations;
+- interview questions;
 - red flags;
-- distributia scorurilor;
-- comparatie skill-uri potrivite/lipsa;
-- comparatie intre scor semantic si skill score;
-- comparatie intre metricile modelelor.
+- score distribution;
+- comparison of matched and missing skills;
+- comparison between semantic score and skill score;
+- comparison between model metrics.
 
 ---
 
-## Reducerea biasului
+## Bias Reduction
 
-Aplicatia incearca sa reduca biasul prin:
+The application attempts to reduce bias by:
 
-- evaluarea candidatilor pe baza competentelor si textului profesional;
-- ignorarea informatiilor sensibile;
-- folosirea aceluiasi proces standardizat pentru toti candidatii;
-- afisarea explicatiilor pentru scor;
-- pastrarea deciziei finale la utilizatorul uman.
+- evaluating candidates based on skills and professional text;
+- ignoring sensitive information;
+- using the same standardized process for all candidates;
+- displaying explanations for the score;
+- keeping the final decision in the hands of the human user.
 
-Sistemul nu trebuie folosit ca mecanism automat de respingere sau acceptare a candidatilor.
+The system should not be used as an automated candidate rejection or acceptance mechanism.
 
-Aplicatia nu trebuie sa inlocuiasca recrutorul, ci sa il ajute sa ia decizii mai rapide si mai bine argumentate.
-
----
-
-## Recomandari si intrebari de interviu
-
-Pentru fiecare candidat, sistemul genereaza recomandari si intrebari.
-
-Exemple:
-
-- daca un skill apare si in CV si in job description, se genereaza o intrebare practica despre acel skill;
-- daca un skill important lipseste, se genereaza o intrebare de clarificare;
-- daca scorul este mic, sistemul semnaleaza ca profilul nu este suficient de potrivit pentru job.
-
-Aceste recomandari sunt explicabile si pot fi verificate de recrutor.
+The application is not intended to replace recruiters, but rather to help them make faster and better-informed decisions.
 
 ---
 
-## Red flags
+## Recommendations and Interview Questions
 
-Aplicatia poate detecta red flags precum:
+For each candidate, the system generates recommendations and questions.
 
-- text extras foarte scurt din CV;
-- acoperire redusa a skill-urilor cerute;
-- similaritate semantica redusa;
-- multe skill-uri lipsa.
+Examples:
 
-Aceste red flags nu sunt decizii finale, ci semnale pentru recrutor.
+- if a skill appears both in the CV and in the job description, a practical question about that skill is generated;
+- if an important skill is missing, a clarification question is generated;
+- if the score is low, the system indicates that the profile is not sufficiently well matched to the job.
+
+These recommendations are explainable and can be reviewed by the recruiter.
 
 ---
 
-## Imbunatatiri realizate
+## Red Flags
 
-In proiect au fost realizate urmatoarele imbunatatiri:
+The application can detect red flags such as:
 
-- extragere text din PDF-uri;
-- suport pentru fisiere TXT si imagini;
-- fallback OCR pentru fisiere scanate;
-- extragere informatii despre candidat;
-- extinderea listei de skill-uri;
-- model semantic folosind Sentence-BERT;
-- fine-tuning pentru modelul SBERT;
-- evaluare cu metrici multiple;
-- generare ranking pentru mai multi candidati;
-- dashboard interactiv;
-- recomandari explicabile;
-- intrebari de interviu;
+- very little text extracted from the CV;
+- low coverage of required skills;
+- low semantic similarity;
+- many missing skills.
+
+These red flags are not final decisions, but signals for the recruiter.
+
+---
+
+## Implemented Improvements
+
+The following improvements were implemented in the project:
+
+- text extraction from PDFs;
+- support for TXT files and images;
+- OCR fallback for scanned files;
+- candidate information extraction;
+- expanded skill list;
+- semantic model using Sentence-BERT;
+- fine-tuning of the SBERT model;
+- evaluation using multiple metrics;
+- ranking generation for multiple candidates;
+- interactive dashboard;
+- explainable recommendations;
+- interview questions;
 - red flags;
-- separarea logicii in tool-uri interne folosite de agent;
-- demo CLI prin `main.py`;
-- salvarea rezultatelor in `reports/hr_dashboard_results.csv`.
+- separation of logic into internal tools used by the agent;
+- CLI demo through `main.py`;
+- saving results to `reports/hr_dashboard_results.csv`.
 
 ---
 
-## Limitari
+## Limitations
 
-- PDF-urile scanate necesita Tesseract OCR instalat separat.
-- Extragerea skill-urilor depinde de dictionarul de competente.
-- Unele CV-uri pot avea formatare greu de citit.
-- Modelul poate mosteni bias din datele de antrenare.
-- Scorul final este un suport decizional, nu o decizie automata de angajare.
-- Recomandarile generate sunt reguli explicabile, nu verdict juridic sau decizie finala.
-- Daca descrierea jobului este foarte scurta sau neclara, scorul poate fi mai putin relevant.
-- Daca CV-ul nu contine explicit anumite skill-uri, sistemul poate considera ca acestea lipsesc.
-- Etichetele folosite pentru evaluare sunt generate automat pe baza acoperirii skill-urilor cerute de job. Din acest motiv, metricile trebuie interpretate ca evaluare tehnica a prototipului, nu ca validare pe decizii reale de recrutare umana. Aplicatia este un instrument de suport decizional si nu trebuie folosita pentru decizii automate de angajare.
+- Scanned PDFs require Tesseract OCR to be installed separately.
+- Skill extraction depends on the skills dictionary.
+- Some CVs may use formatting that is difficult to parse.
+- The model may inherit bias from the training data.
+- The final score is intended as decision support, not as an automated hiring decision.
+- Generated recommendations are explainable rules, not legal verdicts or final decisions.
+- If the job description is very short or unclear, the score may be less relevant.
+- If the CV does not explicitly mention certain skills, the system may consider them missing.
+- The labels used for evaluation are automatically generated based on the coverage of skills required by the job. For this reason, the metrics should be interpreted as a technical evaluation of the prototype rather than validation against real human recruitment decisions. The application is a decision-support tool and should not be used for automated hiring decisions.
 
 ---
 
-## SDG-uri impactate
+## Impacted SDGs
 
 ### SDG 8 - Decent Work and Economic Growth
 
-Proiectul poate eficientiza recrutarea si poate ajuta companiile sa identifice mai rapid candidati potriviti.
+The project can improve the efficiency of recruitment and help companies identify suitable candidates more quickly.
 
-Prin reducerea timpului petrecut pentru filtrarea manuala, echipele HR pot investi mai mult timp in interviuri, evaluari calitative si discutii reale cu aplicantii.
+By reducing the amount of time spent on manual filtering, HR teams can invest more time in interviews, qualitative evaluations, and real discussions with applicants.
 
 ---
 
 ### SDG 10 - Reduced Inequalities
 
-Prin standardizarea evaluarii si evitarea informatiilor personale sensibile, proiectul poate contribui la reducerea biasului in selectia initiala a candidatilor.
+By standardizing evaluation and avoiding sensitive personal information, the project may contribute to reducing bias during the initial candidate selection process.
 
-Aplicatia compara CV-urile cu cerintele jobului, nu cu aspecte personale ale candidatului.
+The application compares CVs with job requirements rather than with candidates' personal characteristics.
 
 ---
 
-## Concluzie
+## Conclusion
 
-Proiectul implementeaza un prototip functional de CV Parsing and HR Assistant.
+The project implements a functional prototype of a CV Parsing and HR Assistant.
 
-Sistemul extrage text din CV-uri, analizeaza competentele, compara CV-urile cu descrierea jobului, calculeaza scoruri explicabile si ofera recomandari utile pentru recrutori.
+The system extracts text from CVs, analyzes skills, compares CVs with job descriptions, calculates explainable scores, and provides useful recommendations for recruiters.
 
-Proiectul include atat partea de AI/ML, cat si un modul de interactiune prin Streamlit si un demo CLI minimal.
+The project includes both AI/ML components and an interactive Streamlit module, as well as a minimal CLI demo.
 
-Aplicatia este gandita ca suport decizional explicabil pentru HR, nu ca sistem automat de angajare.
+The application is designed as an explainable HR decision-support tool, not as an automated hiring system.
